@@ -5,7 +5,6 @@ steps:
       - "-c"
       - |
         docker pull gcr.io/$PROJECT_ID/my_app:latest || exit 0
-
   # Build the application image
   - name: "gcr.io/cloud-builders/docker"
     entrypoint: "bash"
@@ -16,7 +15,17 @@ steps:
         --cache-from gcr.io/$PROJECT_ID/my_app:latest \
         -t gcr.io/$PROJECT_ID/my_app:latest \
         . && docker push gcr.io/$PROJECT_ID/my_app:latest
-
+ 
+ # Build the application image
+  - name: "gcr.io/cloud-builders/docker"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        docker build \
+        --cache-from gcr.io/$PROJECT_ID/my_app:latest \
+        -t gcr.io/$PROJECT_ID/my_app:latest \
+        . && docker push gcr.io/$PROJECT_ID/my_app:latest
   # Deploy to cloud run
   - name: "gcr.io/cloud-builders/gcloud"
     args: [
@@ -25,12 +34,12 @@ steps:
         "$PROJECT_ID", # We are naming the cloudrun service the same as our project id
         "--image",
         "gcr.io/$PROJECT_ID/my_app:latest",
+        "--no-traffic", # Add this line
         "--region",
         "australia-southeast1",
         "--platform",
         "managed",
       ]
-
   # Switch 50% of all traffic over to the latest version.
   - name: "gcr.io/cloud-builders/gcloud"
     args: [
@@ -39,10 +48,9 @@ steps:
         "update-traffic",
         "$PROJECT_ID", # We are naming the cloudrun service the same as our project id
         "--to-latest",
+        "--to-revisions=LATEST=50", # Add this line
         "--region",
         "australia-southeast1",
         "--platform",
         "managed",
       ]
-
-timeout: 800s
